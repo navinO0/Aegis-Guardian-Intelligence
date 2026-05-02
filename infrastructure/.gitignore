@@ -1,0 +1,19 @@
+# Environment variables
+.env
+.env.local
+
+# Docker volumes / Data
+**/data/
+**/db/
+**/logs/
+cache/data/
+postgres/data/
+mongo/data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SSH keys or secrets
+*.pem
+*.key

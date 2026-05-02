@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  claims    Claim[]
+  voiceLogs VoiceLog[]
+  createdAt DateTime @default(now())
+}
+
+model Policy {
+  id          String   @id @default(uuid())
+  title       String
+  content     String   // The text extracted from PDF
+  imageUrl    String?  // Thumbnail or preview image
+  embedding   Unsupported("vector(768)")?
+  chunks      PolicyChunk[]
+  doubts      PolicyDoubt[]
+  metadata    Json?
+  createdAt   DateTime @default(now())
+}
+
+model PolicyChunk {
+  id          String   @id @default(uuid())
+  policyId    String
+  policy      Policy   @relation(fields: [policyId], references: [id])
+  content     String
+  embedding   Unsupported("vector(768)")?
+  createdAt   DateTime @default(now())
+}
+
+model PolicyDoubt {
+  id        String   @id @default(uuid())
+  policyId  String
+  policy    Policy   @relation(fields: [policyId], references: [id])
+  question  String
+  answer    String
+  imageUrl  String?  // Optional image for multi-modal QA
+  createdAt DateTime @default(now())
+}
+
+model Claim {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  description String
+  imageUrl    String?
+  status      String   @default("PENDING")
+  logic       String?  // The "Advocate" reasoning
+  analysis    String?  // AI analysis of damage
+  advice      String?  // AI advocacy advice
+  createdAt   DateTime @default(now())
+}
+
+
+model VoiceLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  transcript String
+  sentiment  String?
+  audioUrl   String?
+  createdAt DateTime @default(now())
+}
