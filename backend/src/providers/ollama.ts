@@ -73,14 +73,19 @@ export class OllamaProvider implements AIProvider {
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
+    const start = Date.now();
+    logger.info({ text: text.substring(0, 100) + '...' }, `🔢 AI Embedding started`);
     try {
       const response = await axios.post(`${this.host}/api/embeddings`, {
         model: this.embedModel,
         prompt: text,
         keep_alive: "2m"
       }, { timeout: 60000 });
+      const duration = Date.now() - start;
+      logger.info({ duration: `${duration}ms` }, `✅ AI Embedding finished`);
       return response.data.embedding;
     } catch (err: any) {
+      logger.error({ error: err.message }, `❌ AI Embedding failed`);
       throw err;
     }
   }
@@ -90,6 +95,8 @@ export class OllamaProvider implements AIProvider {
   }
 
   private async tryGenerate(model: string, prompt: string): Promise<string> {
+    const start = Date.now();
+    logger.info({ model }, `🧠 AI Generation started [${model}]`);
     if (this.hostAvailable !== false) {
       try {
         const res = await axios.post(`${this.host}/api/generate`, { 
@@ -99,8 +106,11 @@ export class OllamaProvider implements AIProvider {
           keep_alive: "2m" 
         }, { timeout: 120000 });
         this.hostAvailable = true;
+        const duration = Date.now() - start;
+        logger.info({ model, duration: `${duration}ms`, prompt, response: res.data.response }, `✅ AI Generation finished [${model}]`);
         return res.data.response;
       } catch (err: any) {
+        logger.error({ model, error: err.message }, `❌ AI Generation failed [${model}]`);
         this.hostAvailable = false;
       }
     }
@@ -108,6 +118,8 @@ export class OllamaProvider implements AIProvider {
   }
 
   private async tryGenerateWithImage(model: string, prompt: string, imageBuffers: Buffer[]): Promise<string> {
+    const start = Date.now();
+    logger.info({ model, imageCount: imageBuffers.length }, `👁️ AI Vision analysis started [${model}]`);
     if (this.hostAvailable !== false) {
       try {
         const res = await axios.post(`${this.host}/api/generate`, {
@@ -118,8 +130,11 @@ export class OllamaProvider implements AIProvider {
           keep_alive: "2m"
         }, { timeout: 180000 });
         this.hostAvailable = true;
+        const duration = Date.now() - start;
+        logger.info({ model, duration: `${duration}ms`, prompt, response: res.data.response }, `✅ AI Vision analysis finished [${model}]`);
         return res.data.response;
       } catch (err: any) {
+        logger.error({ model, error: err.message }, `❌ AI Vision analysis failed [${model}]`);
         this.hostAvailable = false;
         throw err;
       }

@@ -13,7 +13,7 @@ const ai = new OllamaProvider();
 
 export const uploadPolicy = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { title, pdfBase64, imageBase64 } = req.body;
+    const { title, pdfBase64, imageBase64, workspaceId } = req.body;
 
     if (!title) throw new AppError('Document title is required', 400);
     if (!pdfBase64) throw new AppError('PDF content is required', 400);
@@ -26,7 +26,8 @@ export const uploadPolicy = async (req: Request, res: Response, next: NextFuncti
       data: {
         title,
         content: text,
-        imageUrl: imageBase64 ? `data:image/png;base64,${imageBase64}` : null
+        imageUrl: imageBase64 ? `data:image/png;base64,${imageBase64}` : null,
+        workspaceId: workspaceId || null
       }
     });
 
@@ -132,6 +133,24 @@ export const getDoubts = async (req: Request, res: Response, next: NextFunction)
     const policyId = req.params.id as string;
     const doubts = await policyService.getDoubts(policyId);
     res.json(doubts);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePolicyImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const policyId = req.params.id as string;
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) throw new AppError('Image data is required', 400);
+
+    const policy = await prisma.policy.update({
+      where: { id: policyId },
+      data: { imageUrl: `data:image/png;base64,${imageBase64}` }
+    });
+
+    res.json(policy);
   } catch (error) {
     next(error);
   }

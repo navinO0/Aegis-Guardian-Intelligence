@@ -18,6 +18,26 @@ model User {
   createdAt DateTime @default(now())
 }
 
+model Workspace {
+  id            String                  @id @default(uuid())
+  name          String
+  description   String?
+  policies      Policy[]
+  claims        Claim[]
+  conversations WorkspaceConversation[]
+  createdAt     DateTime                @default(now())
+}
+
+model WorkspaceConversation {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  question    String
+  answer      String
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+}
+
 model Policy {
   id          String   @id @default(uuid())
   title       String
@@ -26,6 +46,8 @@ model Policy {
   embedding   Unsupported("vector(768)")?
   chunks      PolicyChunk[]
   doubts      PolicyDoubt[]
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
   metadata    Json?
   createdAt   DateTime @default(now())
 }
@@ -59,6 +81,8 @@ model Claim {
   logic       String?  // The "Advocate" reasoning
   analysis    String?  // AI analysis of damage
   advice      String?  // AI advocacy advice
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
   createdAt   DateTime @default(now())
 }
 
@@ -71,4 +95,17 @@ model VoiceLog {
   sentiment  String?
   audioUrl   String?
   createdAt DateTime @default(now())
+}
+
+model AiProvider {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  type        String   // 'gemini', 'openai', 'anthropic', 'ollama', etc.
+  baseUrl     String?
+  apiKey      String?
+  model       String
+  isActive    Boolean  @default(false)
+  config      Json?    // For extra fields (e.g. temperature, max_tokens)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

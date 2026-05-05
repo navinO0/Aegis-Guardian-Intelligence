@@ -9,9 +9,10 @@ import { showApiError, showApiSuccess } from '@/lib/api-error';
 
 interface DamageUploadProps {
   onUploadSuccess?: (id: string) => void;
+  workspaceId?: string;
 }
 
-const DamageUpload: React.FC<DamageUploadProps> = ({ onUploadSuccess }) => {
+const DamageUpload: React.FC<DamageUploadProps> = ({ onUploadSuccess, workspaceId }) => {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
@@ -37,7 +38,8 @@ const DamageUpload: React.FC<DamageUploadProps> = ({ onUploadSuccess }) => {
       const response = await axios.post('http://localhost:4000/api/claims', {
         userId: 'demo-user',
         description: 'Contextual analysis request',
-        imageBase64: base64
+        imageBase64: base64,
+        workspaceId: workspaceId || null
       });
 
       setStatus('success');

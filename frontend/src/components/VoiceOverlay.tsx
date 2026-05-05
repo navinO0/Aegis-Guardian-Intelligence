@@ -35,7 +35,7 @@ export default function VoiceOverlay({ policyId, policyTitle, isOpen, onClose }:
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] bg-[#020617] flex flex-col items-center justify-center p-8 overflow-hidden"
+          className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-8 overflow-hidden transition-colors duration-500"
         >
           {/* Background Ambient Glow */}
           <div className="absolute inset-0 pointer-events-none">
@@ -43,7 +43,7 @@ export default function VoiceOverlay({ policyId, policyTitle, isOpen, onClose }:
               "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] transition-all duration-1000",
               state === 'thinking' ? "bg-purple-600/20 scale-110" : 
               state === 'speaking' ? "bg-emerald-600/20 scale-125" : 
-              "bg-blue-600/10 scale-100"
+              "bg-primary/10 scale-100"
             )} />
           </div>
 
@@ -54,13 +54,13 @@ export default function VoiceOverlay({ policyId, policyTitle, isOpen, onClose }:
                 <Volume2 size={20} className="text-white" />
               </div>
               <div>
-                <h2 className="font-bold text-white uppercase tracking-widest text-xs">Guardian Voice</h2>
-                <p className="text-slate-400 text-[10px] uppercase font-bold">{policyTitle}</p>
+                <h2 className="font-bold text-foreground uppercase tracking-widest text-xs">Guardian Voice</h2>
+                <p className="text-muted-foreground text-[10px] uppercase font-bold">{policyTitle}</p>
               </div>
             </div>
             <button 
               onClick={onClose}
-              className="p-3 bg-slate-900 border border-slate-800 rounded-full text-slate-400 hover:text-white transition-all ring-1 ring-slate-800"
+              className="p-3 bg-muted border border-border rounded-full text-muted-foreground hover:text-foreground transition-all ring-1 ring-border"
             >
               <X size={24} />
             </button>
@@ -84,7 +84,7 @@ export default function VoiceOverlay({ policyId, policyTitle, isOpen, onClose }:
                   "text-xl font-medium tracking-tight h-12 flex items-center justify-center",
                   state === 'speaking' ? "text-emerald-400" :
                   state === 'thinking' ? "text-purple-400" :
-                  "text-slate-400"
+                  "text-muted-foreground"
                 )}>
                   {state === 'speaking' ? "Speaking..." :
                    state === 'thinking' ? "Thinking..." :
@@ -99,12 +99,12 @@ export default function VoiceOverlay({ policyId, policyTitle, isOpen, onClose }:
                  <motion.div 
                    initial={{ opacity: 0, scale: 0.95 }}
                    animate={{ opacity: 1, scale: 1 }}
-                   className="bg-slate-900/50 border border-slate-800/50 p-6 rounded-3xl backdrop-blur-xl relative"
+                   className="bg-card/50 border border-border/50 p-6 rounded-3xl backdrop-blur-xl relative"
                  >
-                   <div className="absolute -top-3 left-6 px-2 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                   <div className="absolute -top-3 left-6 px-2 py-1 bg-muted rounded-lg text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                      Advisor
                    </div>
-                   <p className="text-lg text-slate-200 leading-relaxed font-medium">
+                   <p className="text-lg text-foreground leading-relaxed font-medium">
                      {lastMessage}
                    </p>
                  </motion.div>
@@ -119,17 +119,17 @@ export default function VoiceOverlay({ policyId, policyTitle, isOpen, onClose }:
               whileTap={{ scale: 0.9 }}
               onClick={() => isRecording ? stopRecording() : startRecording()}
               className={cn(
-                "w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.3)]",
+                "w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.3)] text-white",
                 isRecording 
                   ? "bg-red-500 shadow-red-500/20 ring-8 ring-red-500/10" 
-                  : "bg-gradient-to-tr from-blue-500 to-indigo-600 shadow-blue-500/20"
+                  : "bg-gradient-to-tr from-primary to-indigo-600 shadow-primary/20"
               )}
             >
               {isRecording ? <MicOff size={36} /> : <Mic size={36} />}
             </motion.button>
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-               <span className="text-xs font-bold tracking-widest uppercase text-slate-500">
+               <span className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
                  Secure Voice Tunnel Active
                </span>
             </div>

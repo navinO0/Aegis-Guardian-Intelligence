@@ -28,6 +28,12 @@ if [ "$ENABLE_NGINX" = "true" ]; then
     echo "   📍 Entry: http://localhost (Routing to :4000)"
 fi
 
+if [ "$ENABLE_PROMETHEUS" = "true" ]; then
+    echo "📊 Starting Monitoring (Prometheus)..."
+    (cd prometheus && docker compose --env-file ../.env up -d)
+    echo "   📍 Prometheus: http://localhost:9090"
+fi
+
 echo "------------------------------------------------"
 echo "✅ Core infrastructure is up!"
 echo "------------------------------------------------"

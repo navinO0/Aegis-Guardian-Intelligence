@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 export const createClaim = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId, description, imageBase64 } = req.body;
+    const { userId, description, imageBase64, workspaceId } = req.body;
 
     if (!userId || !description) {
       throw new AppError('userId and description are required', 400);
@@ -25,7 +25,8 @@ export const createClaim = async (req: Request, res: Response, next: NextFunctio
       data: {
         userId,
         description,
-        status: 'PENDING'
+        status: 'PENDING',
+        workspaceId: workspaceId || null
       }
     });
 
