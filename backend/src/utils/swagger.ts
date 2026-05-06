@@ -4,9 +4,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Aegis AI API',
+      title: 'Aegis AI API Documentation',
       version: '1.0.0',
-      description: 'High-precision document advisory and analysis platform',
+      description: 'Centralized high-precision document advisory and analysis platform API',
     },
     servers: [
       {
@@ -15,7 +15,8 @@ const options = {
       },
     ],
   },
-  apis: ['./src/routes/*.ts', './src/controllers/*.ts'],
+  // Only look at the centralized documentation file
+  apis: ['./src/docs/openapi.doc.ts'],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
