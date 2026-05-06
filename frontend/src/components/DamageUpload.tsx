@@ -58,35 +58,35 @@ const DamageUpload: React.FC<DamageUploadProps> = ({ onUploadSuccess, workspaceI
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-lg mx-auto bg-card border border-border p-6 rounded-2xl shadow-xl">
       <div 
         className={cn(
-          "relative border-2 border-dashed rounded-[2rem] p-8 flex flex-col items-center justify-center transition-all duration-300",
-          status === 'idle' && "border-slate-700 bg-slate-900/40 hover:border-blue-500/50 hover:bg-slate-800/40",
-          status === 'uploading' && "border-blue-500/50 bg-blue-500/5 cursor-wait",
-          status === 'success' && "border-emerald-500/50 bg-emerald-500/5"
+          "relative border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all duration-300",
+          status === 'idle' && "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50",
+          status === 'uploading' && "border-primary/50 bg-primary/5 cursor-wait",
+          status === 'success' && "border-emerald-500/30 bg-emerald-500/5"
         )}
       >
         {preview ? (
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden group">
-            <img src={preview} alt="Context preview" className="w-full h-full object-cover" />
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden group">
+            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <button onClick={clear} className="p-2 bg-red-500 rounded-full text-white">
-                <X size={20} />
+              <button onClick={clear} className="p-2 bg-destructive rounded-full text-destructive-foreground">
+                <X size={18} />
               </button>
             </div>
           </div>
         ) : (
           <div 
-            className="flex flex-col items-center gap-4 cursor-pointer w-full py-12 text-center"
+            className="flex flex-col items-center gap-4 cursor-pointer w-full py-8 text-center"
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-400">
-              <Upload size={32} />
+            <div className="p-3 bg-primary/10 rounded-xl text-primary">
+              <Upload size={24} />
             </div>
             <div>
-              <p className="font-bold text-slate-200">Upload Visual Proof</p>
-              <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest">Image context for advisor</p>
+              <p className="font-bold text-foreground text-sm">Upload Context Image</p>
+              <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-semibold">Visual data for AI consultation</p>
             </div>
           </div>
         )}
@@ -95,26 +95,26 @@ const DamageUpload: React.FC<DamageUploadProps> = ({ onUploadSuccess, workspaceI
 
         {preview && status === 'idle' && (
           <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
             onClick={handleUpload}
-            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold transition-all shadow-lg shadow-blue-900/40"
+            className="mt-6 w-full py-3 bg-primary hover:opacity-90 rounded-lg font-bold text-primary-foreground text-xs transition-all shadow-sm"
           >
-            Analyze Visuals
+            Confirm & Analyze
           </motion.button>
         )}
 
         {status === 'uploading' && (
-          <div className="mt-6 flex items-center gap-2 text-blue-400 font-bold text-sm">
-            <Loader2 size={20} className="animate-spin" />
-            Vetting Proof...
+          <div className="mt-6 flex items-center gap-2 text-primary font-bold text-xs">
+            <Loader2 size={16} className="animate-spin" />
+            Processing...
           </div>
         )}
 
         {status === 'success' && (
-          <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="mt-6 flex items-center gap-2 text-emerald-400 font-bold text-sm">
-            <CheckCircle2 size={20} />
-            Context Queued
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="mt-6 flex items-center gap-2 text-emerald-500 font-bold text-xs uppercase tracking-widest">
+            <CheckCircle2 size={16} />
+            Success
           </motion.div>
         )}
       </div>

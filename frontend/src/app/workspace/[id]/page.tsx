@@ -2,16 +2,22 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Mic, FileText, Send, Sparkles, Plus, Image as ImageIcon, Loader2, ArrowLeft, X } from 'lucide-react';
+import { Mic, FileText, Send, Sparkles, Plus, Image as ImageIcon, Loader2, ArrowLeft, X, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import WorkspaceSidebar from '@/components/WorkspaceSidebar';
 import { showApiError, showApiSuccess } from '@/lib/api-error';
-import DamageUpload from '@/components/DamageUpload';
-import VoiceOverlay from '@/components/VoiceOverlay';
-import ReactMarkdown from 'react-markdown';
+import dynamic from 'next/dynamic';
+import Image from 'next/image';
+
+const DamageUpload = dynamic(() => import('@/components/DamageUpload'), { ssr: false });
+const VoiceOverlay = dynamic(() => import('@/components/VoiceOverlay'), { ssr: false });
+const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false });
+const IntelligenceScanner = dynamic(() => import('@/components/IntelligenceScanner'), { ssr: false });
 import remarkGfm from 'remark-gfm';
+
+import { useInterval } from '@/hooks/useInterval';
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -29,15 +35,29 @@ export default function WorkspacePage() {
   const [chatImage, setChatImage] = useState<string | null>(null);
   const [chatImagePreview, setChatImagePreview] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   const scrollToBottom = () => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    // If we are within 100px of the bottom, consider us "at the bottom"
+    const atBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setIsAtBottom(atBottom);
   };
 
   const fetchWorkspace = async () => {
     try {
       const res = await axios.get(`http://localhost:4000/api/workspaces/${workspaceId}`);
       setWorkspace(res.data);
+      // Auto-load summary if it exists in cache
+      if (res.data.summary && !summary) {
+        setSummary(res.data.summary);
+      }
     } catch (err) {
       showApiError(err);
     }
@@ -46,7 +66,8 @@ export default function WorkspacePage() {
   const generateSummary = async () => {
     setSummaryLoading(true);
     try {
-      const res = await axios.get(`http://localhost:4000/api/workspaces/${workspaceId}/summary`);
+      // Pass refresh=true to force a fresh AI generation
+      const res = await axios.get(`http://localhost:4000/api/workspaces/${workspaceId}/summary?refresh=true`);
       setSummary(res.data.summary);
     } catch (err) {
       showApiError(err);
@@ -57,12 +78,18 @@ export default function WorkspacePage() {
 
   useEffect(() => {
     fetchWorkspace();
-    const interval = setInterval(fetchWorkspace, 8000);
-    return () => clearInterval(interval);
+    // No longer using naked setInterval here
   }, [workspaceId]);
 
+  // Use visibility-aware polling with increased interval (20s)
+  useInterval(() => {
+    fetchWorkspace();
+  }, 20000);
+
   useEffect(() => {
-    scrollToBottom();
+    if (isAtBottom) {
+      scrollToBottom();
+    }
   }, [workspace?.conversations]);
 
   const handleAsk = async (e: React.FormEvent) => {
@@ -111,65 +138,86 @@ export default function WorkspacePage() {
 
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {/* Header */}
-        <header className="p-6 border-b border-border flex justify-between items-center backdrop-blur-md bg-background/50 sticky top-0 z-20">
+        <header className="px-8 py-4 border-b border-border flex justify-between items-center bg-card transition-colors duration-500">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => router.push('/')}
-              className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+              className="p-1.5 hover:bg-muted rounded-md text-muted-foreground transition-colors"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
             </button>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">{workspace.name}</h1>
-              <p className="text-xs text-muted-foreground font-medium">Insurance & Document Intelligence</p>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">{workspace.name}</h1>
+              <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Workspace Intelligence</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
              <button 
               onClick={() => setShowClaimUpload(true)}
-              className="px-5 py-2 bg-primary rounded-xl text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+              className="px-4 py-2 bg-primary rounded-lg text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm flex items-center gap-2"
             >
               <Sparkles size={14} /> Analyze Claim
             </button>
             <button 
               onClick={() => setShowDocUpload(true)}
-              className="px-5 py-2 bg-card border border-border rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-muted border border-border rounded-lg text-xs font-bold text-foreground hover:bg-muted/80 transition-all flex items-center gap-2"
             >
-              <Plus size={14} className="text-primary" /> Add Document
+              <Plus size={14} /> Add Document
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-12">
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-8 space-y-12 max-w-6xl mx-auto w-full relative"
+        >
+          <AnimatePresence>
+            {!isAtBottom && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                onClick={scrollToBottom}
+                className="fixed bottom-32 right-12 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-primary-foreground/20"
+                title="Scroll to bottom"
+              >
+                <ArrowDown size={20} className="animate-bounce" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+
           {/* Docs Section */}
           <section>
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-3">
-              <div className="w-1 h-3 bg-primary rounded-full" /> Workspace Knowledge Base
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
+              <div className="w-1 h-3 bg-primary rounded-full" /> Knowledge Base
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {workspace.policies.map((p: any) => (
                 <motion.div 
                   key={p.id}
-                  whileHover={{ y: -4 }}
-                  className="bg-card/40 border border-border p-5 rounded-[2rem] hover:border-primary/30 transition-all"
+                  whileHover={{ y: -2 }}
+                  className="bg-card border border-border p-5 rounded-xl hover:border-primary/40 transition-all shadow-sm"
                 >
                   <div className="flex items-center gap-4 mb-4">
                     {p.imageUrl ? (
-                       <img src={p.imageUrl} className="w-12 h-12 rounded-xl object-cover border border-border" alt="" />
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-border">
+                        <Image src={p.imageUrl} fill className="object-cover" alt={p.title} />
+                      </div>
                     ) : (
-                      <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <FileText size={20} />
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                        <FileText size={18} />
                       </div>
                     )}
                     <div className="overflow-hidden">
                       <h4 className="font-bold text-sm text-foreground truncate">{p.title}</h4>
-                      <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Indexed</p>
+                      <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Indexed</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mt-4">
                     <button 
                       onClick={() => setActiveVoicePolicy(p)}
-                      className="flex-1 py-2.5 bg-primary rounded-xl text-[10px] font-bold text-primary-foreground hover:bg-primary/90 transition-all"
+                      className="flex-1 py-2 bg-muted hover:bg-primary hover:text-primary-foreground rounded-lg text-[10px] font-bold text-foreground transition-all"
                     >
                       Voice Consult
                     </button>
@@ -177,89 +225,102 @@ export default function WorkspacePage() {
                 </motion.div>
               ))}
               {workspace.policies.length === 0 && (
-                <div className="col-span-full border-2 border-dashed border-border rounded-[2rem] p-12 text-center text-muted-foreground font-medium">
-                  No documents in this workspace. Upload your policies to begin.
+                <div className="col-span-full border-2 border-dashed border-border rounded-xl p-12 text-center text-muted-foreground font-medium text-sm">
+                  No documents found. Index your policies to begin.
                 </div>
               )}
             </div>
           </section>
 
-          {/* Doc Representator Summary */}
-          <section className="bg-gradient-to-br from-primary/20 to-blue-900/10 border border-primary/20 p-8 rounded-[2.5rem] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Sparkles size={120} className="text-primary" />
-            </div>
-            <div className="relative z-10">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-foreground tracking-tight">Doc Representator™</h3>
-                  <p className="text-sm text-muted-foreground">High-precision workspace intelligence</p>
-                </div>
-                <button 
-                  onClick={generateSummary}
-                  disabled={summaryLoading || workspace.policies.length === 0}
-                  className="px-6 py-2.5 bg-foreground text-background rounded-xl text-xs font-black uppercase tracking-widest hover:bg-muted transition-all disabled:opacity-30 flex items-center gap-2"
-                >
-                  {summaryLoading ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                  {summary ? 'Refresh Summary' : 'Generate Overview'}
-                </button>
+          {/* Intelligence Overview */}
+          <section className="bg-card border border-border p-8 rounded-2xl relative shadow-sm overflow-hidden">
+            <div className="flex justify-between items-center mb-8 relative z-20">
+              <div>
+                <h3 className="text-lg font-bold text-foreground tracking-tight">Intelligence Overview</h3>
+                <p className="text-xs text-muted-foreground font-medium">Automatic workspace synthesis</p>
               </div>
-              
-              {summary ? (
-                <div className="prose prose-invert max-w-none">
-                  <div className="bg-background/50 p-8 rounded-3xl border border-border text-foreground text-sm leading-relaxed font-medium">
+              <button 
+                onClick={generateSummary}
+                disabled={summaryLoading || workspace.policies.length === 0}
+                className="px-4 py-2 bg-foreground text-background rounded-lg text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-30 flex items-center gap-2"
+              >
+                {summaryLoading ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                {summary ? 'Refresh Analysis' : 'Generate Summary'}
+              </button>
+            </div>
+            
+            <AnimatePresence mode="wait">
+              {summaryLoading ? (
+                <motion.div 
+                  key="scanner"
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }}
+                >
+                  <IntelligenceScanner />
+                </motion.div>
+              ) : summary ? (
+                <motion.div 
+                  key="summary"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="prose prose-sm dark:prose-invert max-w-none relative z-20"
+                >
+                  <div className="bg-muted/30 p-6 rounded-xl border border-border text-foreground leading-relaxed text-sm">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {summary}
                     </ReactMarkdown>
                   </div>
-                </div>
+                </motion.div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px]">
-                  Analyze your knowledge base to reveal coverage gaps and risks.
+                <div className="py-12 text-center text-muted-foreground font-bold uppercase tracking-widest text-[9px] relative z-20">
+                  Generate an analysis to reveal key insights across your documents.
                 </div>
               )}
-            </div>
+            </AnimatePresence>
           </section>
 
           {/* Claims/Analysis Section */}
           {workspace.claims.length > 0 && (
             <section>
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-3">
-                <div className="w-1 h-3 bg-emerald-500 rounded-full" /> Claims Analysis
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
+                <div className="w-1 h-3 bg-emerald-500 rounded-full" /> Active Consultations
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {workspace.claims.map((c: any) => (
-                  <div key={c.id} className="bg-card/30 border border-border/20 p-6 rounded-[2rem] backdrop-blur-sm">
+                  <div key={c.id} className="bg-card border border-border p-6 rounded-xl shadow-sm">
                     <div className="flex justify-between items-center mb-4">
-                      <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">{c.status}</span>
-                      <span className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[9px] font-bold uppercase text-emerald-500 tracking-widest">{c.status}</span>
+                      <span className="text-[9px] text-muted-foreground font-medium">{new Date(c.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-sm font-medium text-foreground mb-2">{c.description}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic line-clamp-2">{c.advice}</p>
+                    <p className="text-sm font-bold text-foreground mb-2">{c.description}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed italic line-clamp-3">{c.advice}</p>
                   </div>
                 ))}
               </div>
             </section>
-          )}          {/* Chat Section */}
-          <section className="flex flex-col flex-1 pb-32">
-             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-3">
-              <div className="w-1 h-3 bg-purple-500 rounded-full" /> Shadow Consultations
+          )}
+
+          {/* Chat Section */}
+          <section className="flex flex-col flex-1 pb-48">
+             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
+              <div className="w-1 h-3 bg-primary rounded-full" /> Interaction Log
             </h3>
             <div className="space-y-6">
               {workspace.conversations?.map((conv: any) => (
                 <div key={conv.id} className="space-y-4">
                   <div className="flex justify-end">
-                    <div className="bg-primary/10 border border-primary/20 px-5 py-3 rounded-2xl max-w-[80%] text-sm font-medium text-foreground flex flex-col gap-3">
+                    <div className="bg-primary/5 border border-primary/20 px-4 py-3 rounded-xl max-w-[85%] text-sm font-medium text-foreground flex flex-col gap-3 shadow-sm">
                       {conv.imageUrl && (
-                        <div className="w-full max-w-[300px] rounded-xl overflow-hidden border border-primary/30 shadow-lg">
-                          <img src={conv.imageUrl} className="w-full h-auto object-cover" alt="User upload" />
+                        <div className="w-full max-w-[400px] rounded-lg overflow-hidden border border-border shadow-sm">
+                          <Image src={conv.imageUrl} width={400} height={300} className="w-full h-auto object-cover" alt="Uploaded Context" unoptimized />
                         </div>
                       )}
                       {conv.question}
                     </div>
                   </div>
                   <div className="flex justify-start">
-                    <div className="bg-card border border-border px-6 py-4 rounded-[2rem] max-w-[90%] text-sm leading-relaxed text-foreground prose prose-invert prose-sm">
+                    <div className="bg-card border border-border px-5 py-4 rounded-xl max-w-[90%] text-sm leading-relaxed text-foreground prose-sm prose dark:prose-invert shadow-sm">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {conv.answer}
                       </ReactMarkdown>
@@ -273,69 +334,71 @@ export default function WorkspacePage() {
         </div>
 
         {/* Input Dock */}
-        <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-background via-background to-transparent z-10">
-          <AnimatePresence>
-            {chatImagePreview && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="max-w-4xl mx-auto mb-4 relative"
+        <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+          <div className="max-w-4xl mx-auto w-full pointer-events-auto">
+            <AnimatePresence>
+              {chatImagePreview && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="mb-3 relative inline-block"
+                >
+                  <div className="w-24 h-24 rounded-lg overflow-hidden border-2 border-primary shadow-lg relative group">
+                    <Image src={chatImagePreview} width={96} height={96} className="w-full h-full object-cover" alt="Preview" unoptimized />
+                    <button 
+                      onClick={() => { setChatImage(null); setChatImagePreview(null); }}
+                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={16} className="text-white" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <form 
+              onSubmit={handleAsk}
+              className="bg-card border border-border p-1.5 rounded-xl flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/30 transition-all"
+            >
+              <input 
+                type="file" 
+                id="chat-image-input" 
+                accept="image/*" 
+                hidden 
+                onChange={handleChatImageChange} 
+              />
+              <button 
+                type="button" 
+                onClick={() => document.getElementById('chat-image-input')?.click()}
+                className="p-3 text-muted-foreground hover:text-foreground transition-colors"
               >
-                <div className="w-32 h-32 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl relative group">
-                  <img src={chatImagePreview} className="w-full h-full object-cover" alt="Preview" />
-                  <button 
-                    onClick={() => { setChatImage(null); setChatImagePreview(null); }}
-                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X size={20} className="text-white" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <form 
-            onSubmit={handleAsk}
-            className="max-w-4xl mx-auto bg-card/80 backdrop-blur-2xl border border-border p-2 rounded-3xl flex items-center gap-2 shadow-2xl"
-          >
-            <input 
-              type="file" 
-              id="chat-image-input" 
-              accept="image/*" 
-              hidden 
-              onChange={handleChatImageChange} 
-            />
-            <button 
-              type="button" 
-              onClick={() => document.getElementById('chat-image-input')?.click()}
-              className="p-4 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ImageIcon size={20} />
-            </button>
-            <input 
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask anything about the documents in this workspace..."
-              className="flex-1 bg-transparent border-none outline-none text-sm font-medium p-4 text-foreground"
-            />
-             <button 
-              type="submit"
-              disabled={loading}
-              className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
-            </button>
-          </form>
+                <ImageIcon size={18} />
+              </button>
+              <input 
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Message your workspace advisor..."
+                className="flex-1 bg-transparent border-none outline-none text-sm font-medium p-3 text-foreground"
+              />
+               <button 
+                type="submit"
+                disabled={loading}
+                className="p-3 bg-primary rounded-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 shadow-sm"
+              >
+                {loading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+              </button>
+            </form>
+          </div>
         </div>
       </main>
 
       {/* Overlays */}
       <AnimatePresence>
         {showClaimUpload && (
-          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4">
             <div className="w-full max-w-xl">
               <DamageUpload onUploadSuccess={() => setShowClaimUpload(false)} workspaceId={workspaceId} />
-              <button onClick={() => setShowClaimUpload(false)} className="mt-4 w-full text-center text-muted-foreground text-sm font-bold">Cancel</button>
+              <button onClick={() => setShowClaimUpload(false)} className="mt-4 w-full text-center text-white/60 hover:text-white text-xs font-bold transition-all">CLOSE</button>
             </div>
           </motion.div>
         )}
@@ -343,15 +406,21 @@ export default function WorkspacePage() {
 
       <AnimatePresence>
         {showDocUpload && (
-          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-             <div className="w-full max-w-lg bg-card border border-border p-8 rounded-[2rem] shadow-2xl">
-                <h2 className="text-xl font-bold mb-2">Index Workspace Document</h2>
-                <p className="text-sm text-muted-foreground mb-6">This document will be added to the {workspace.name} knowledge base.</p>
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4">
+             <div className="w-full max-w-md bg-card border border-border p-8 rounded-2xl shadow-2xl">
+                <h2 className="text-xl font-bold mb-1">Index Document</h2>
+                <p className="text-xs text-muted-foreground mb-6 font-medium">Add a legal or insurance policy to your intelligence base.</p>
                 <div className="space-y-4">
-                  <input id="p-title" placeholder="Document Title" className="w-full bg-background border border-border p-4 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-primary text-foreground" />
-                  <input type="file" id="p-pdf" accept="application/pdf" className="w-full text-xs text-muted-foreground" />
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Title</label>
+                    <input id="p-title" placeholder="e.g. Home Policy 2024" className="w-full bg-background border border-border p-3 rounded-lg text-sm outline-none focus:border-primary transition-all font-medium" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">PDF File</label>
+                    <input type="file" id="p-pdf" accept="application/pdf" className="w-full text-xs text-muted-foreground" />
+                  </div>
                   <div className="flex gap-3 pt-4">
-                    <button onClick={() => setShowDocUpload(false)} className="flex-1 py-4 border border-border rounded-2xl font-bold text-muted-foreground">Cancel</button>
+                    <button onClick={() => setShowDocUpload(false)} className="flex-1 py-3 bg-muted rounded-lg font-bold text-foreground text-xs">Cancel</button>
                     <button 
                       onClick={async () => {
                         const title = (document.getElementById('p-title') as HTMLInputElement).value;
@@ -368,7 +437,7 @@ export default function WorkspacePage() {
                           fetchWorkspace();
                         };
                       }}
-                      className="flex-1 py-4 bg-primary rounded-2xl font-bold text-primary-foreground"
+                      className="flex-1 py-3 bg-primary rounded-lg font-bold text-primary-foreground text-xs"
                     >
                       Start Indexing
                     </button>

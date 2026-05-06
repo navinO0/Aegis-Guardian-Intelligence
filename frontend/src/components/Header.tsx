@@ -10,15 +10,19 @@ import {
   Cpu, 
   ChevronRight,
   Menu,
-  X
+  X,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useTheme } from './ThemeProvider';
 
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
+  const { theme, setTheme } = useTheme();
 
   const isHome = pathname === '/';
 
@@ -28,19 +32,19 @@ export default function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-background/80 border-b border-border px-6 py-4 transition-colors duration-500">
+    <header className="sticky top-0 z-40 w-full bg-background/95 border-b border-border px-6 py-4 transition-colors duration-500">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div 
           onClick={() => router.push('/')}
           className="flex items-center gap-3 cursor-pointer group"
         >
-          <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-emerald-400 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform" />
-          <h1 className="text-xl font-black tracking-tighter uppercase italic text-foreground group-hover:text-primary transition-colors">
-            Aegis
+          <div className="w-8 h-8 bg-primary rounded-lg shadow-sm transition-transform group-hover:scale-105" />
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Aegis Intelligence
           </h1>
         </div>
 
-        <nav className="hidden md:flex items-center gap-2 bg-muted/50 border border-border p-1.5 rounded-2xl">
+        <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
@@ -49,37 +53,46 @@ export default function Header() {
                 key={item.path}
                 onClick={() => router.push(item.path)}
                 className={cn(
-                  "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all",
+                  "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all",
                   isActive 
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "bg-muted text-foreground" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
-                <Icon size={16} />
+                <Icon size={14} />
                 {item.name}
               </button>
             );
           })}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-lg border border-border bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-all shadow-sm"
+            title="Toggle Theme"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           <button 
             onClick={() => router.push('/settings/providers')}
             className={cn(
-              "p-3 rounded-2xl border transition-all",
+              "p-2 rounded-lg border transition-all",
               pathname === '/settings/providers'
-                ? "bg-primary border-primary/50 text-primary-foreground shadow-lg shadow-primary/20"
-                : "bg-muted/50 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                : "bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
+            title="Settings"
           >
-            <Settings size={20} />
+            <Settings size={18} />
           </button>
           
           <button 
-            className="md:hidden p-3 bg-muted border border-border rounded-2xl text-muted-foreground hover:text-foreground"
+            className="md:hidden p-2 bg-muted border border-border rounded-lg text-muted-foreground hover:text-foreground"
             onClick={() => setIsOpen(!isOpen)}
           >
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
+            {isOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
@@ -87,12 +100,12 @@ export default function Header() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden overflow-hidden bg-background/95 border-b border-border mt-4 -mx-6 px-6 pb-6"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="md:hidden absolute top-full left-0 w-full bg-background border-b border-border px-6 py-4 shadow-xl"
           >
-            <div className="flex flex-col gap-3 py-4">
+            <div className="flex flex-col gap-2">
               {navItems.map((item) => {
                 const isActive = pathname === item.path;
                 const Icon = item.icon;
@@ -104,10 +117,10 @@ export default function Header() {
                       setIsOpen(false);
                     }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl font-bold text-left transition-all",
+                      "flex items-center gap-4 p-4 rounded-xl font-bold text-left transition-all",
                       isActive 
-                        ? "bg-primary text-primary-foreground shadow-xl shadow-primary/20" 
-                        : "bg-muted/50 border border-border text-muted-foreground hover:text-foreground"
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-muted border border-border text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <Icon size={20} />

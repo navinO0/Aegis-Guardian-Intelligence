@@ -15,7 +15,7 @@ export const createWorkspace = async (req: Request, res: Response, next: NextFun
     if (!name) throw new AppError('Workspace name is required', 400);
 
     const workspace = await prisma.workspace.create({
-      data: { name, description }
+      data: { name: name as string, description: description as string }
     });
 
     res.status(201).json(workspace);
@@ -42,7 +42,7 @@ export const listWorkspaces = async (req: Request, res: Response, next: NextFunc
 
 export const getWorkspace = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const workspace = await prisma.workspace.findUnique({
       where: { id },
       include: {
@@ -101,12 +101,12 @@ export const askWorkspace = async (req: Request, res: Response, next: NextFuncti
     const context = chunks.map(c => c.content).join('\n\n');
 
     const history = await prisma.workspaceConversation.findMany({
-      where: { workspaceId: id },
+      where: { workspaceId: id as string },
       orderBy: { createdAt: 'desc' },
       take: 5
     });
 
-    const recentHistory = history.reverse().map(h => `User: ${h.question}\nShadow: ${h.answer}`).join('\n\n');
+    const recentHistory = (history as any[]).reverse().map(h => `User: ${h.question}\nShadow: ${h.answer}`).join('\n\n');
 
     const prompt = `
       You are the "Aegis Guardian", a premium AI document representative.
@@ -141,9 +141,9 @@ export const askWorkspace = async (req: Request, res: Response, next: NextFuncti
 
     const conversation = await prisma.workspaceConversation.create({
       data: {
-        workspaceId: id,
-        question,
-        answer,
+        workspaceId: id as string,
+        question: question as string,
+        answer: answer as string,
         imageUrl: imageBase64 ? `data:image/png;base64,${imageBase64}` : null
       }
     });
@@ -156,27 +156,54 @@ export const askWorkspace = async (req: Request, res: Response, next: NextFuncti
 
 export const getWorkspaceSummary = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const workspace = await prisma.workspace.findUnique({
+    const id = req.params.id as string;
+    const refresh = req.query.refresh as string; // Allow forcing a refresh
+
+    const workspace: any = await prisma.workspace.findUnique({
       where: { id },
       include: { policies: true }
     });
 
     if (!workspace) throw new AppError('Workspace not found', 404);
 
+    // If summary exists and we aren't forcing a refresh, return cached version
+    if (workspace.summary && refresh !== 'true') {
+      logger.info({ workspaceId: id }, '📦 Returning cached workspace summary');
+      return res.json({ summary: workspace.summary, cached: true });
+    }
+
+    if (workspace.policies.length === 0) {
+      return res.json({ summary: null, message: 'No documents to summarize' });
+    }
+
+    logger.info({ workspaceId: id }, '🧠 Generating fresh workspace summary');
     const allContent = workspace.policies.map(p => `--- ${p.title} ---\n${p.content}`).join('\n\n');
     
     const prompt = `
-      You are the "Doc Representator".
-      Summarize the following massive collection of documents into a human-readable high-end executive overview.
-      Highlight coverage gaps, key expiration dates, and critical terms.
+      You are the "Aegis Intelligence Architect".
+      Summarize the following insurance Knowledge Base into a premium, executive intelligence overview.
+      Structure the output into:
+      1. **Strategic Summary**: A high-level view of the protection landscape.
+      2. **Risk & Coverage Gaps**: Identify what is NOT covered.
+      3. **Critical Clauses**: Highlight terms that favor the user.
+      4. **Action Roadmap**: Next 3 steps for the user.
 
       DOCUMENTS CONTENT:
-      ${allContent.substring(0, 10000)} // Limit to 10k chars for fast summary
+      ${allContent.substring(0, 15000)}
     `;
 
     const summary = await aiProvider.generateText(prompt);
-    res.json({ summary });
+
+    // Cache the summary in DB
+    await prisma.workspace.update({
+      where: { id: id as string },
+      data: { 
+        summary,
+        summaryUpdatedAt: new Date()
+      } as any
+    });
+
+    res.json({ summary, cached: false });
   } catch (error) {
     next(error);
   }

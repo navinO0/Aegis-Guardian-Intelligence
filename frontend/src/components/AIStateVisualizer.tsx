@@ -20,9 +20,9 @@ const AIStateVisualizer: React.FC<AIStateVisualizerProps> = ({ state, intensity 
           key="glow"
           className={cn(
             "absolute inset-0 rounded-full blur-3xl opacity-20 transition-colors duration-1000",
-            state === 'idle' && "bg-blue-500",
-            state === 'thinking' && "bg-purple-500",
-            state === 'speaking' && "bg-emerald-500"
+            state === 'idle' && "bg-primary/40",
+            state === 'thinking' && "bg-primary/20",
+            state === 'speaking' && "bg-primary/60"
           )}
           animate={{
             scale: [1, 1.2, 1],
@@ -45,7 +45,7 @@ const AIStateVisualizer: React.FC<AIStateVisualizerProps> = ({ state, intensity 
         >
           {state === 'idle' && (
             <motion.div
-              className="w-32 h-32 rounded-full border-2 border-blue-400/30 bg-blue-500/10 backdrop-blur-sm"
+              className="w-32 h-32 rounded-full border-2 border-primary/30 bg-primary/10 backdrop-blur-sm"
               animate={{
                 borderRadius: ["50% 50% 50% 50%", "45% 55% 48% 52%", "50% 50% 50% 50%"],
                 rotate: [0, 90, 180, 270, 360],
@@ -63,7 +63,7 @@ const AIStateVisualizer: React.FC<AIStateVisualizerProps> = ({ state, intensity 
               {[...Array(3)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="absolute inset-0 w-32 h-32 rounded-full border border-purple-400/40"
+                  className="absolute inset-0 w-32 h-32 rounded-full border border-primary/20"
                   animate={{
                     scale: [1, 1.5, 1],
                     rotate: [0, 120, 240, 360],
@@ -78,7 +78,7 @@ const AIStateVisualizer: React.FC<AIStateVisualizerProps> = ({ state, intensity 
                 />
               ))}
               <motion.div
-                className="w-24 h-24 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 blur-sm"
+                className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary/60 to-primary/20 blur-sm"
                 animate={{
                   scale: [1, 1.1, 1],
                 }}

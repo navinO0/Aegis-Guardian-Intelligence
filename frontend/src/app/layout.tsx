@@ -4,6 +4,7 @@ import "./globals.css";
 import ToastProvider from "@/components/ToastProvider";
 import Header from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,11 +33,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <ToastProvider />
-          <Header />
-          <main className="flex-1 flex flex-col">
-            {children}
-          </main>
+          <ErrorBoundary>
+            <ToastProvider />
+            <Header />
+            <main className="flex-1 flex flex-col">
+              {children}
+            </main>
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>

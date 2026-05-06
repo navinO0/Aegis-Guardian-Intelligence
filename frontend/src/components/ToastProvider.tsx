@@ -16,31 +16,24 @@ export default function ToastProvider() {
           background: 'var(--card)',
           color: 'var(--foreground)',
           border: '1px solid var(--border)',
-          borderRadius: '16px',
-          padding: '14px 20px',
-          fontSize: '14px',
-          fontWeight: 500,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(12px)',
-          maxWidth: '420px',
+          borderRadius: '12px',
+          padding: '12px 18px',
+          fontSize: '13px',
+          fontWeight: 600,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          maxWidth: '380px',
         },
         success: {
           iconTheme: {
             primary: 'var(--primary)',
             secondary: 'var(--primary-foreground)',
           },
-          style: {
-            borderColor: 'var(--primary)',
-          },
         },
         error: {
           duration: 6000,
           iconTheme: {
-            primary: '#f87171',
-            secondary: 'var(--card)',
-          },
-          style: {
-            borderColor: 'rgba(248, 113, 113, 0.2)',
+            primary: '#ef4444',
+            secondary: 'white',
           },
         },
       }}

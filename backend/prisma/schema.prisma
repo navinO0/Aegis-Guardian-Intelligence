@@ -22,6 +22,8 @@ model Workspace {
   id            String                  @id @default(uuid())
   name          String
   description   String?
+  summary       String?
+  summaryUpdatedAt DateTime?
   policies      Policy[]
   claims        Claim[]
   conversations WorkspaceConversation[]
