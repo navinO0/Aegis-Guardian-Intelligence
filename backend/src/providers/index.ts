@@ -20,6 +20,7 @@ export interface AiProviderConfig {
   baseUrl?: string | null;
   apiKey?: string | null;
   model: string;
+  visionModel?: string | null;
   isActive: boolean;
   config?: any;
 }

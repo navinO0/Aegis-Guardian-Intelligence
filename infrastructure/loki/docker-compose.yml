@@ -1,0 +1,14 @@
+services:
+  loki:
+    image: grafana/loki:latest
+    container_name: aegis_loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    external: true

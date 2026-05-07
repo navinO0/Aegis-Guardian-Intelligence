@@ -6,10 +6,12 @@ export class GeminiProvider implements AIProvider {
   name = 'Gemini';
   private genAI: GoogleGenerativeAI;
   private model: string;
+  private visionModel: string;
 
-  constructor(apiKey: string, model: string = 'gemini-1.5-flash') {
+  constructor(apiKey: string, model: string = 'gemini-1.5-flash', visionModel: string = 'gemini-1.5-flash') {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = model;
+    this.visionModel = visionModel;
   }
 
   async initialize(): Promise<void> {}
@@ -34,10 +36,10 @@ export class GeminiProvider implements AIProvider {
   async analyzeImage(imageBuffer: Buffer | Buffer[], prompt: string): Promise<string> {
     const start = Date.now();
     const buffers = Array.isArray(imageBuffer) ? imageBuffer : [imageBuffer];
-    logger.info({ model: this.model, imageCount: buffers.length }, `👁️ Gemini Vision analysis started`);
+    logger.info({ model: this.visionModel, imageCount: buffers.length }, `👁️ Gemini Vision analysis started`);
     
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.model });
+      const model = this.genAI.getGenerativeModel({ model: this.visionModel });
       
       const parts = [
         { text: prompt },
@@ -54,10 +56,10 @@ export class GeminiProvider implements AIProvider {
       const text = response.text();
       
       const duration = Date.now() - start;
-      logger.info({ model: this.model, duration: `${duration}ms` }, `✅ Gemini Vision analysis finished`);
+      logger.info({ model: this.visionModel, duration: `${duration}ms` }, `✅ Gemini Vision analysis finished`);
       return text;
     } catch (err: any) {
-      logger.error({ model: this.model, error: err.message }, `❌ Gemini Vision analysis failed`);
+      logger.error({ model: this.visionModel, error: err.message }, `❌ Gemini Vision analysis failed`);
       throw err;
     }
   }

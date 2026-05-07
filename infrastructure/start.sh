@@ -34,6 +34,39 @@ if [ "$ENABLE_PROMETHEUS" = "true" ]; then
     echo "   📍 Prometheus: http://localhost:9090"
 fi
 
+if [ "$ENABLE_GRAFANA" = "true" ]; then
+    echo "📈 Starting Visualization (Grafana)..."
+    (cd grafana && docker compose --env-file ../.env up -d)
+    echo "   📍 Grafana: http://localhost:3001"
+fi
+
+if [ "$ENABLE_LOKI" = "true" ]; then
+    echo "📁 Starting Log Aggregation (Loki)..."
+    (cd loki && docker compose --env-file ../.env up -d)
+    echo "   📍 Loki: http://localhost:3100"
+fi
+
+if [ "$ENABLE_PROMTAIL" = "true" ]; then
+    echo "🚛 Starting Log Shipper (Promtail)..."
+    (cd promtail && docker compose --env-file ../.env up -d)
+fi
+
+if [ "$ENABLE_JENKINS" = "true" ]; then
+    echo "🏗️  Starting Build System (Jenkins)..."
+    (cd jenkins && docker compose --env-file ../.env up -d)
+    echo "   📍 Jenkins: http://localhost/jenkins"
+fi
+
 echo "------------------------------------------------"
 echo "✅ Core infrastructure is up!"
+echo "------------------------------------------------"
+echo "🔗 ACCESS LINKS:"
+echo "   🛡️  Aegis Gateway:   http://localhost"
+echo "   🖥️  System Status:  http://localhost/status"
+echo "   🏗️  Jenkins CI:     http://localhost/jenkins"
+echo "   📚  Swagger Docs:    http://localhost/docs"
+echo "   📈  Grafana:         http://localhost:3001"
+echo "   📁  Loki (Logs):     http://localhost:3100"
+echo "   🐘  Postgres:        localhost:5432"
+echo "   📦  Redis:           localhost:6379"
 echo "------------------------------------------------"

@@ -68,13 +68,13 @@ export class ProviderManager implements AIProvider {
   private createProvider(config: AiProviderConfig): AIProvider {
     switch (config.type) {
       case 'openai':
-        return new OpenAIProvider(config.apiKey!, config.model, config.baseUrl || undefined);
+        return new OpenAIProvider(config.apiKey!, config.model, config.baseUrl || undefined, config.visionModel || undefined);
       case 'gemini':
-        return new GeminiProvider(config.apiKey!, config.model);
+        return new GeminiProvider(config.apiKey!, config.model, config.visionModel || undefined);
       case 'anthropic':
-        return new AnthropicProvider(config.apiKey!, config.model);
+        return new AnthropicProvider(config.apiKey!, config.model, config.visionModel || undefined);
       case 'ollama':
-        return new OllamaProvider(config.baseUrl || undefined);
+        return new OllamaProvider(config.baseUrl || undefined, config.model, config.visionModel || undefined);
       default:
         return new OllamaProvider();
     }

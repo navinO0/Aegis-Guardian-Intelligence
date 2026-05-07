@@ -113,7 +113,7 @@ io.on('connection', (socket) => {
   });
 });
 
-httpServer.listen(PORT, async () => {
+httpServer.listen(Number(PORT), '0.0.0.0', async () => {
   logger.info(`------------------------------------------------`);
   logger.info(`🛡️ Aegis Guardian Backend is Live`);
   logger.info(`------------------------------------------------`);

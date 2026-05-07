@@ -29,6 +29,7 @@ interface AiProvider {
   baseUrl: string | null;
   apiKey: string | null;
   model: string;
+  visionModel: string | null;
   isActive: boolean;
   config: any;
 }
@@ -45,6 +46,7 @@ export default function ProvidersSettings() {
     baseUrl: '',
     apiKey: '',
     model: '',
+    visionModel: '',
   });
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function ProvidersSettings() {
       await axios.post('http://localhost:4000/api/providers', formData);
       toast.success('Provider added successfully');
       setIsAdding(false);
-      setFormData({ name: '', type: 'openai', baseUrl: '', apiKey: '', model: '' });
+      setFormData({ name: '', type: 'openai', baseUrl: '', apiKey: '', model: '', visionModel: '' });
       fetchProviders();
     } catch (err) {
       toast.error('Failed to add provider');
@@ -171,6 +173,12 @@ export default function ProvidersSettings() {
                         <div className="flex items-center gap-3 text-muted-foreground text-xs font-medium">
                           <Layers size={13} />
                           <span>{p.model}</span>
+                          {p.visionModel && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-border" />
+                              <span className="text-primary/70">👁️ {p.visionModel}</span>
+                            </>
+                          )}
                           <span className="w-1 h-1 rounded-full bg-border" />
                           <span className="uppercase">{p.type}</span>
                         </div>
@@ -280,6 +288,16 @@ export default function ProvidersSettings() {
                       placeholder="e.g. gpt-4o, gemini-1.5-pro"
                       value={formData.model}
                       onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                      className="w-full bg-background border border-border rounded-xl px-5 py-3 text-foreground focus:outline-none focus:border-primary transition-all text-sm font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Vision Model (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. gpt-4o, moondream, llava"
+                      value={formData.visionModel}
+                      onChange={(e) => setFormData({ ...formData, visionModel: e.target.value })}
                       className="w-full bg-background border border-border rounded-xl px-5 py-3 text-foreground focus:outline-none focus:border-primary transition-all text-sm font-medium"
                     />
                   </div>

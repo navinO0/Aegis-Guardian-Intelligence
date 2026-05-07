@@ -74,11 +74,14 @@ export default function WorkspaceSidebar() {
 
         <div className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar pt-4">
           {workspaces.map((ws) => (
-            <button
+            <div
               key={ws.id}
               onClick={() => router.push(`/workspace/${ws.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && router.push(`/workspace/${ws.id}`)}
               className={cn(
-                "w-full group flex items-center justify-between p-2.5 rounded-lg transition-all",
+                "w-full group flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer",
                 activeId === ws.id 
                   ? "bg-muted text-foreground" 
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -107,7 +110,7 @@ export default function WorkspaceSidebar() {
                   <Trash2 size={14} />
                 </button>
               )}
-            </button>
+            </div>
           ))}
         </div>
 

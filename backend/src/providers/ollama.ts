@@ -17,11 +17,16 @@ export class OllamaProvider implements AIProvider {
   private hostAvailable: boolean | null = null;
   public imageService: ImageService;
 
-  constructor(host: string = process.env.OLLAMA_HOST || 'http://localhost:11434') {
+  constructor(
+    host: string = process.env.OLLAMA_HOST || 'http://localhost:11434',
+    chatModel: string = process.env.LLM_MODEL || 'qwen2.5:7b',
+    visionModel: string = process.env.VISION_MODEL || 'moondream',
+    embedModel: string = process.env.EMBED_MODEL || 'nomic-embed-text'
+  ) {
     this.host = host;
-    this.model = process.env.LLM_MODEL || 'qwen2.5:7b';
-    this.visionModel = process.env.VISION_MODEL || 'moondream';
-    this.embedModel = process.env.EMBED_MODEL || 'nomic-embed-text';
+    this.model = chatModel;
+    this.visionModel = visionModel;
+    this.embedModel = embedModel;
     this.fallbackVisionModel = 'moondream';
     this.imageService = new ImageService();
   }

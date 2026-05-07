@@ -106,6 +106,7 @@ model AiProvider {
   baseUrl     String?
   apiKey      String?
   model       String
+  visionModel String?  @default("moondream")
   isActive    Boolean  @default(false)
   config      Json?    // For extra fields (e.g. temperature, max_tokens)
   createdAt   DateTime @default(now())

@@ -3,11 +3,14 @@ version: '3.8'
 services:
   nginx:
     image: nginx:stable-alpine
-    container_name: docu_guardian_gateway
+    container_name: aegis_gateway
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
     volumes:
       - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./status.html:/usr/share/nginx/html/status.html:ro
     networks:
       - app-network
     restart: always

@@ -18,14 +18,14 @@ export const listProviders = async (req: Request, res: Response, next: NextFunct
 
 export const createProvider = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, type, baseUrl, apiKey, model, config } = req.body;
+    const { name, type, baseUrl, apiKey, model, visionModel, config } = req.body;
     
     if (!name || !type || !model) {
       throw new AppError('Name, type, and model are required', 400);
     }
 
     const provider = await prisma.aiProvider.create({
-      data: { name, type, baseUrl, apiKey, model, config }
+      data: { name, type, baseUrl, apiKey, model, visionModel, config }
     });
 
     res.status(201).json(provider);
@@ -37,7 +37,7 @@ export const createProvider = async (req: Request, res: Response, next: NextFunc
 export const updateProvider = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { name, type, baseUrl, apiKey, model, config, isActive } = req.body;
+    const { name, type, baseUrl, apiKey, model, visionModel, config, isActive } = req.body;
 
     // If making this provider active, deactivate all others first (optional, but usually one active ai at a time)
     if (isActive) {
@@ -49,7 +49,7 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
 
     const provider = await prisma.aiProvider.update({
       where: { id },
-      data: { name, type, baseUrl, apiKey, model, config, isActive }
+      data: { name, type, baseUrl, apiKey, model, visionModel, config, isActive }
     });
 
     // If the active provider changed, reload the manager

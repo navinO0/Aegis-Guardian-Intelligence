@@ -6,12 +6,14 @@ export class AnthropicProvider implements AIProvider {
   name = 'Anthropic';
   private client: Anthropic;
   private model: string;
+  private visionModel: string;
 
-  constructor(apiKey: string, model: string = 'claude-3-5-sonnet-20240620') {
+  constructor(apiKey: string, model: string = 'claude-3-5-sonnet-20240620', visionModel: string = 'claude-3-5-sonnet-20240620') {
     this.client = new Anthropic({
       apiKey,
     });
     this.model = model;
+    this.visionModel = visionModel;
   }
 
   async initialize(): Promise<void> {}
@@ -38,7 +40,7 @@ export class AnthropicProvider implements AIProvider {
   async analyzeImage(imageBuffer: Buffer | Buffer[], prompt: string): Promise<string> {
     const start = Date.now();
     const buffers = Array.isArray(imageBuffer) ? imageBuffer : [imageBuffer];
-    logger.info({ model: this.model, imageCount: buffers.length }, `👁️ Anthropic Vision analysis started`);
+    logger.info({ model: this.visionModel, imageCount: buffers.length }, `👁️ Anthropic Vision analysis started`);
     
     try {
       const content: any[] = buffers.map(buffer => ({
@@ -53,17 +55,17 @@ export class AnthropicProvider implements AIProvider {
       content.push({ type: 'text', text: prompt });
 
       const response = await this.client.messages.create({
-        model: this.model,
+        model: this.visionModel,
         max_tokens: 4096,
         messages: [{ role: 'user', content }],
       });
 
       const duration = Date.now() - start;
       const text = (response.content[0] as any).text || '';
-      logger.info({ model: this.model, duration: `${duration}ms` }, `✅ Anthropic Vision analysis finished`);
+      logger.info({ model: this.visionModel, duration: `${duration}ms` }, `✅ Anthropic Vision analysis finished`);
       return text;
     } catch (err: any) {
-      logger.error({ model: this.model, error: err.message }, `❌ Anthropic Vision analysis failed`);
+      logger.error({ model: this.visionModel, error: err.message }, `❌ Anthropic Vision analysis failed`);
       throw err;
     }
   }

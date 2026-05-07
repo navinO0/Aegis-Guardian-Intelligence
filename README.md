@@ -14,36 +14,114 @@
 
 ---
 
+## 🏗️ High-Level Analytics & System Architecture
+
+The Aegis infrastructure is designed around a decoupled, microservices-oriented configuration utilizing Docker for robust service isolation, Nginx as a high-performance HTTP gateway, and Cloudflare Tunnels for secure edge connectivity.
+
+```mermaid
+graph TD
+    User([User Device / Browser]) <--> |HTTPS / WSS| CF(Cloudflare Edge)
+    CF <--> |Tunnel| Nginx(Nginx API Gateway)
+    
+    subgraph Infrastructure
+        Nginx <--> |REST / Socket.io| Backend(Node.js / Express Backend)
+        Nginx --> |/grafana| Grafana[Grafana Dashboard]
+        Nginx --> |/loki| Loki[Loki Logs]
+        Nginx --> |/jenkins| Jenkins[Jenkins CI/CD]
+    end
+
+    subgraph Backend Services
+        Backend --> |Read/Write| Postgres[(PostgreSQL + pgvector)]
+        Backend --> |Job Queue| Redis[(Redis)]
+        Backend <--> |Inference| AI[Local LLMs: Qwen, Moondream, Nomic]
+        
+        Redis --> BullMQ[BullMQ Background Workers]
+        BullMQ --> |Index & Process| AI
+        BullMQ --> |Store Vectors| Postgres
+    end
+```
+
+---
+
+## 🧠 Retrieval-Augmented Generation (RAG) Workflow
+
+Our proprietary document ingestion pipeline separates heavy data processing from the main user interface. When documents are analyzed, they are securely parsed, chunked, vectorized, and stored for rapid, context-aware retrieval.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant BE as Backend API
+    participant W as Worker (BullMQ)
+    participant Model as Nomic Embedding Model
+    participant DB as pgvector Database
+
+    U->>BE: Upload Policy / Document PDF (Multipart Form)
+    BE->>U: 202 Accepted (Job ID)
+    BE->>W: Enqueue PDF Parse Task
+    
+    rect rgb(30, 40, 50)
+        Note over W,DB: Asynchronous Processing
+        W->>W: Extract raw text from PDF
+        W->>W: Chunk text with overlap semantics
+        loop For Each Chunk
+            W->>Model: Request Vector Embedding
+            Model-->>W: 768-D Vector Frame
+            W->>DB: INSERT INTO Policy Embeddings
+        end
+    end
+    
+    W-->>BE: Task Complete Notification
+    BE-->>U: Workspace Ready (Websocket event)
+```
+
+**Why this workflow?** By offloading extraction and embedding to `BullMQ` and `Redis`, the main Node.js event loop isn't blocked. This guarantees the user interface maintains real-time chat responsiveness even while gigabytes of PDFs are being ingested.
+
+---
+
 ## 🚀 Key Features
 
 - **🛡️ Aegis Strategy Engine**: Generates prescriptive, step-by-step roadmaps for claims and rights recovery.
 - **🎙️ Immersive Voice Advisor**: Hands-free consultation via real-time speech-to-text and speech synthesis.
 - **📸 Multi-Modal Case Analysis**: Upload photos of damage or documents for instant visual vetting.
-- **📄 PDF Knowledge Vectorization**: Proprietary RAG (Retrieval-Augmented Generation) pipeline that indexes entire policies for millisecond query response.
-- **🏗️ Modular Workspace**: A centralized dashboard to manage multiple documents, warranties, and active legal consultations.
+- **📄 PDF Knowledge Vectorization**: Proprietary RAG pipeline that indexes entire policies for millisecond query response.
+- **🏗️ Modular Workspace**: A centralized dashboard to manage multiple documents, warranties, and active consultations.
 - **⚡ Real-time Event Streaming**: Powered by Socket.io for seamless transitions between AI states (Thinking, Speaking, Listening).
-- **🏭 Async Processing**: Robust background workers (BullMQ) handle heavy document indexing without blocking the UI.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🛠️ Tech Stack & Backend Structure
 
 ### **Frontend**
 - **Next.js 15 & React 19**: Providing the foundation for a high-performance, modern web application.
 - **Framer Motion**: Used for the "premium aesthetic" through smooth transitions and cinematic overlays.
-- **Lucide Icons**: For clean, minimalist iconography.
-- **Axios & TanStack hooks**: For robust API communication and state management.
+- **Socket.io-client**: Persistent TCP connections for immediate AI feedback and voice synthesis tracking.
 
-### **Backend**
+### **Backend Structure**
 - **Express.js (TypeScript)**: A high-density, typesafe backend server.
-- **Prisma ORM**: For elegant, typesafe database management.
-- **Socket.io**: Enabling the real-time voice-to-voice interaction loop.
-- **BullMQ (Redis)**: Managing the heavy lifting of PDF text extraction and vector indexing.
+- **Prisma ORM**: For elegant, typesafe database management. Enables deterministic query typings against PostgreSQL.
+- **Workers Directory**: Modular background workers separated from primary routing logic to handle high compute (e.g. `policy.worker.ts`).
+- **AI Providers**: Abstracted model handlers (`manager.ts`, `ollama.ts`) to permit swapping between local LLMs and cloud LLMs silently.
 
-### **Infrastructure**
-- **Nginx Gateway**: Acts as a reverse proxy for API and WebSocket traffic, optimized for Cloudflare Tunnels.
-- **PostgreSQL + pgvector**: A high-performance vector database storing 768-dimension embeddings for linguistic search.
-- **Docker & Docker Compose**: Modularized services (Postgres, Redis, Nginx) for reproducible deployments.
+### **Infrastructure Components**
+- **Nginx Gateway**: Acts as a reverse proxy router. Custom configs heavily rate-limit raw traffic, allocate dynamic request sizing (`client_max_body_size 50M`), and distribute pathings to analytics nodes.
+- **PostgreSQL + pgvector**: Stores complex application states alongside 768-dimension embeddings for semantic search mapping.
+- **Docker & Docker Compose**: Each infrastructure unit runs in a highly isolated application layer utilizing specific mapped networking bounds.
+
+---
+
+## 🏎️ Production Optimizations & Scalability
+
+Aegis Intelligence is engineered for production-grade stability and can scale to support high-traffic environments. 
+
+### **1. Performance & Bundle Optimization**
+- **Dynamic Component Loading**: Utilizes `next/dynamic` to split code at the component layer. Heavy modules like the **Voice Engine** and **Markdown Renderers** are lazy-loaded, decreasing the initial JavaScript payload by ~40%.
+- **Next.js Image Optimization**: All media assets and evidence photos pass through `next/image` pipelines. Providing automatic selection (WebP/AVIF) and lazy loading—vital for mobile users filing claims locally at reduced bandwidth.
+- **Gzip/Brotli Compression**: The production gateway (Nginx) utilizes deep resource compression, returning rapid lightweight serialized payloads across the Cloudflare edge.
+
+### **2. Stability & Fault Tolerance**
+- **Global Error Boundaries**: Catches React component failures seamlessly, containing rendering exceptions locally instead of white-screening the app.
+- **Asynchronous Queue Management (Redis)**: By using `BullMQ` to manage vectorization tasks and large vision payloads, we ensure spikes in platform popularity cannot exhaust server IO threads.
+- **Prisma Connection Pooling**: Maintains persistent database connections inside defined limits minimizing TCP handshake delays across multiple users making overlapping RAG queries.
 
 ---
 
@@ -52,55 +130,24 @@
 | Model | Role | Why? |
 | :--- | :--- | :--- |
 | **Qwen 2.5 (7b)** | Core Reasoning | Chosen for its exceptional balance between reasoning capability and local inference speed. |
-| **Moondream** | Vision / Analysis | Replaced heavy models (LLava) for its 800MB footprint, providing stable, high-precision image analysis on consumer hardware. |
-| **Nomic-Embed-Text** | Vector Embeddings | Provides a high-density 768-dimension vector space for superior semantic retrieval from legal documents. |
+| **Moondream** | Vision / Analysis | Replaced heavy models (LLava) for its 800MB footprint, providing incredibly stable image analysis on consumer hardware without runtime exhaustion. |
+| **Nomic-Embed-Text** | Vector Embeddings | Provides a high-density 768-dimension vector space specifically tailored for high-quality semantic retrieval within long-form legal contexts. |
 
 ---
 
-## 🧪 Challenges & Overcoming Roadblocks
+## 🧪 Overcoming Engineering Challenges
 
 ### **1. Memory Pressure & System Crashes**
-- **Challenge**: Initial tests with `llava` (5GB+) caused the Ollama runner to terminate on local hardware, leading to "Connection Refused" errors.
-- **Solution**: Migrated to the lightweight **Moondream** model. This reduced the memory footprint by 80% while maintaining high accuracy in accident and document OCR tasks.
+- **Challenge**: Initial tests with `llava` (5GB+) caused local orchestration hosts to execute Out Of Memory (OOM) and crash entirely, resulting in downstream "Connection Refused" blocks for API traffic.
+- **Solution**: Migrated to **Moondream**. Reduced ambient memory weight by 80% while retaining equivalent accuracy scoring on OCR text discovery and accident damage classification.
 
-### **2. Vector Dimension Mismatches (Error 22000)**
-- **Challenge**: Inconsistent embedding sizes from various models caused Postgres `pgvector` to reject insertions.
-- **Solution**: Implemented strict 768-dimension validation in the indexing worker and added a text-length filter to ensure only meaningful data is vectorized.
+### **2. Vector Dimension Mismatches**
+- **Challenge**: Inconsistent array sizes from varying tokenized data caused Postgres `pgvector` to forcefully reject chunk embeddings (Error 22000).
+- **Solution**: Strictly forced a 768-dimension limit validation during indexing map execution. We additionally added minimum text limits to guarantee null chunks or low-value data wasn't occupying active vector real estate.
 
-### **3. Seamless Voice-to-Voice Loop**
-- **Challenge**: Merging Speech Recognition (STT) and Synthesis (TTS) into a standard chat UI without clashing.
-- **Solution**: Built a custom `useVoiceAgent` hook that manages the browser Speech API and socket state, allowing the AI to automatically "speak" its responses immediately after generation.
-
-### **4. Scaling File Uploads**
-- **Challenge**: Large PDF policies and high-res damage photos triggered "413 Payload Too Large" errors in the gateway.
-- **Solution**: Optimized the Nginx `default.conf` with `client_max_body_size 50M` and implemented image compression via `sharp` before AI analysis.
-
----
-
----
-
-## 🚀 Production Optimizations & Scalability
-
-Aegis Intelligence is engineered for production-grade stability and can scale to support high-traffic environments through the following technical implementations:
-
-### **1. Performance & Bundle Optimization**
-- **Dynamic Component Loading**: Utilizes `next/dynamic` to split code at the component level. Heavy modules like the **Voice Engine**, **Damage Analysis Uploads**, and **Markdown Renderers** are only loaded when required, reducing the initial JavaScript payload by ~40%.
-- **Next.js Image Optimization**: All media assets and user-uploaded document previews pass through the `next/image` pipeline. This provides automatic format selection (WebP/AVIF), lazy loading, and responsive resizing to prevent bandwidth waste.
-- **Resource Compression**: The production gateway (Nginx) and Next.js middleware utilize **Gzip/Brotli compression**, ensuring minimal transfer sizes for text-heavy insurance documents.
-- **Visibility-Aware Polling**: Implemented custom hooks (`useInterval`) that detect browser tab visibility. Background API synchronization automatically pauses when the application is not in view, drastically reducing redundant server load and battery consumption on mobile devices.
-
-### **2. Stability & Fault Tolerance**
-- **Global Error Boundaries**: Implemented a React `ErrorBoundary` system to catch and contain runtime exceptions. This prevents the entire application from crashing and provides users with a graceful recovery/reload mechanism.
-- **Payload & Rate Management**: Configured robust request body limits (50MB) and asynchronous queueing via **BullMQ** to ensure that concurrent high-intensity tasks (like document vectorization) do not degrade API responsiveness.
-- **Prisma Connection Pooling**: Optimized database connection management to handle thousands of concurrent queries without exhausting system threads.
-
-### **3. Scalable AI Architecture**
-- **Distributed RAG (Retrieval-Augmented Generation)**: Knowledge indexing is decoupled from the main API thread. This allows the indexing workers to be scaled horizontally across multiple compute nodes as document volume increases.
-- **Streaming State Management**: Interaction states are synchronized via native React state and WebSockets, ensuring low-latency feedback during AI "thinking" phases.
-
-### **4. Security & Compliance**
-- **Header Sanitization**: Implemented standard security headers (poweredByHeader: false) and strict CORS policies to prevent cross-site scripting and data exfiltration.
-- **Typesafe Data Pipelines**: Leveraging full-stack TypeScript and Prisma schemas ensures that data flows are validated at compile-time and runtime.
+### **3. Scaling Large File Uploads**
+- **Challenge**: Passing oversized HD inspection photos and massive corporate PDFs frequently triggered "413 Payload Too Large" across the initial Express & Nginx instances.
+- **Solution**: Reconfigured Nginx with active body limits mapping explicitly to 50MB and engaged explicit image pre-flight compression utilizing `sharp` inside the Node server boundary.
 
 ---
 

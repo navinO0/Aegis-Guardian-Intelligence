@@ -6,13 +6,15 @@ export class OpenAIProvider implements AIProvider {
   name = 'OpenAI';
   private client: OpenAI;
   private model: string;
+  private visionModel: string;
 
-  constructor(apiKey: string, model: string = 'gpt-4o', baseUrl?: string) {
+  constructor(apiKey: string, model: string = 'gpt-4o', baseUrl?: string, visionModel: string = 'gpt-4o') {
     this.client = new OpenAI({
       apiKey,
       baseURL: baseUrl || undefined,
     });
     this.model = model;
+    this.visionModel = visionModel;
   }
 
   async initialize(): Promise<void> {
@@ -40,7 +42,7 @@ export class OpenAIProvider implements AIProvider {
   async analyzeImage(imageBuffer: Buffer | Buffer[], prompt: string): Promise<string> {
     const start = Date.now();
     const buffers = Array.isArray(imageBuffer) ? imageBuffer : [imageBuffer];
-    logger.info({ model: this.model, imageCount: buffers.length }, `👁️ OpenAI Vision analysis started`);
+    logger.info({ model: this.visionModel, imageCount: buffers.length }, `👁️ OpenAI Vision analysis started`);
     
     try {
       const messages: any[] = [
@@ -57,16 +59,16 @@ export class OpenAIProvider implements AIProvider {
       ];
 
       const response = await this.client.chat.completions.create({
-        model: this.model,
+        model: this.visionModel,
         messages,
       });
 
       const duration = Date.now() - start;
       const content = response.choices[0]?.message?.content || '';
-      logger.info({ model: this.model, duration: `${duration}ms` }, `✅ OpenAI Vision analysis finished`);
+      logger.info({ model: this.visionModel, duration: `${duration}ms` }, `✅ OpenAI Vision analysis finished`);
       return content;
     } catch (err: any) {
-      logger.error({ model: this.model, error: err.message }, `❌ OpenAI Vision analysis failed`);
+      logger.error({ model: this.visionModel, error: err.message }, `❌ OpenAI Vision analysis failed`);
       throw err;
     }
   }

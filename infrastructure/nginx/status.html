@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Status Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --card: #16161d;
+            --primary: #6366f1;
+            --success: #10b981;
+            --error: #ef4444;
+            --border: rgba(255, 255, 255, 0.05);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        body {
+            background: var(--bg);
+            color: var(--text);
+            padding: 40px;
+            min-height: 100 screen;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 40%);
+        }
+
+        .header {
+            max-width: 1000px;
+            margin: 0 auto 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        h1 { font-weight: 800; font-size: 2.5rem; letter-spacing: -0.05em; margin-bottom: 5px; }
+        .subtitle { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; }
+
+        .grid {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .status-up { color: var(--success); background: var(--success); }
+        .status-down { color: var(--error); background: var(--error); }
+        .status-checking { color: var(--primary); background: var(--primary); animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .service-name { font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; display: flex; align-items: center; }
+        .service-url { color: var(--text-muted); font-size: 0.75rem; font-family: monospace; }
+        .service-meta { margin-top: 15px; display: flex; gap: 10px; }
+        .badge { background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 100px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); }
+
+        .last-update { margin-top: 40px; text-align: center; color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="subtitle">Infrastructure Monitoring</div>
+            <h1>Aegis Core</h1>
+        </div>
+        <div id="global-status" style="font-weight: 800; color: var(--success)">VITAL SIGNS: NOMINAL</div>
+    </div>
+
+    <div class="grid" id="status-grid">
+        <!-- Cards will be injected here -->
+    </div>
+
+    <div class="last-update" id="last-update">Last system sync: --:--:--</div>
+
+    <script>
+        const services = [
+            { name: 'Nginx Gateway', url: 'http://localhost/health', display: '/gateway' },
+            { name: 'Backend API', url: 'http://localhost/api/health', display: '/api' },
+            { name: 'Visualizer', url: 'http://localhost/grafana/api/health', display: '/grafana' },
+            { name: 'Log Engine', url: 'http://localhost/loki/ready', display: '/loki' },
+            { name: 'Build System', url: 'http://localhost/jenkins/login', display: '/jenkins' },
+            { name: 'Database', url: 'http://localhost:5432', display: ':5432 (TCP)', type: 'tcp' }
+        ];
+
+        function createCard(service) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = `service-${service.name.replace(/\s+/g, '-').toLowerCase()}`;
+            card.innerHTML = `
+                <div class="service-name">
+                    <span class="status-dot status-checking"></span>
+                    ${service.name}
+                </div>
+                <div class="service-url">${service.display}</div>
+                <div class="service-meta">
+                    <span class="badge">Internal</span>
+                    <span class="badge response-time">--ms</span>
+                </div>
+            `;
+            return card;
+        }
+
+        const grid = document.getElementById('status-grid');
+        services.forEach(s => grid.appendChild(createCard(s)));
+
+        async function checkStatus() {
+            let allUp = true;
+            for (const s of services) {
+                const card = document.getElementById(`service-${s.name.replace(/\s+/g, '-').toLowerCase()}`);
+                const dot = card.querySelector('.status-dot');
+                const timeLabel = card.querySelector('.response-time');
+                const start = Date.now();
+
+                try {
+                    // For non-HTTP or different domain, we might hit CORS, so we use a fetch with no-cache
+                    // and just check if the promise resolves (even if it's an opaque response or error)
+                    const res = await fetch(s.url, { mode: 'no-cors' });
+                    const latency = Date.now() - start;
+                    
+                    dot.className = 'status-dot status-up';
+                    timeLabel.innerText = `${latency}ms`;
+                } catch (e) {
+                    dot.className = 'status-dot status-down';
+                    timeLabel.innerText = 'OFFLINE';
+                    allUp = false;
+                }
+            }
+
+            document.getElementById('global-status').innerText = allUp ? 'VITAL SIGNS: NOMINAL' : 'ALERT: SYSTEM DEGRADATION';
+            document.getElementById('global-status').style.color = allUp ? 'var(--success)' : 'var(--error)';
+            document.getElementById('last-update').innerText = `Last system sync: ${new Date().toLocaleTimeString()}`;
+        }
+
+        setInterval(checkStatus, 5000);
+        checkStatus();
+    </script>
+</body>
+</html>
